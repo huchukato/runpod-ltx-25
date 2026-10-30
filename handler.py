@@ -19,8 +19,8 @@ Job input:
   }
 
 The I2VA-T2VA template serves both modes: images present → QwenVL I2V path,
-no images → LTX's own TextGenerateLTX2Prompt (a 1x1 dummy image satisfies the
-required image inputs; the size comes from the PVR widgets, never the image).
+no images → the same QwenVL text-only with the image re-injections dropped
+(T2V). The "Switch to Text to Video?" boolean carries the mode on canvas.
 """
 
 import asyncio
@@ -59,12 +59,6 @@ WF_SYNC_MANIFEST = WF_SYNC_DIR / ".manifest"
 INLINE_MAX = int(os.environ.get("OUTPUT_INLINE_MAX_MB", "10")) * 1024 * 1024
 INLINE_BUDGET = int(os.environ.get("OUTPUT_INLINE_BUDGET_MB", "15")) * 1024 * 1024
 S3_PREFIX = os.environ.get("S3_OUTPUT_PREFIX", "outputs")
-
-# 1x1 black PNG — satisfies the required image inputs of the T2V path's
-# LTXVImgToVideoInplace nodes (bypassed) without shipping a real render.
-_DUMMY_PNG = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
-    "YPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==")
 
 
 def _http(path, payload=None, timeout=30):
@@ -200,21 +194,15 @@ def _load_workflow(name):
 
 def _patch(prompt, job):
     base = re.sub(r"[^\w.-]+", "-", str(job.get("job_name") or f"job_{uuid.uuid4().hex[:8]}")).strip("-")
-    # I2VA-T2VA: the ComfySwitchNode picks the prompt source — QwenVL with
-    # images (I2V), LTX's own TextGenerateLTX2Prompt without (T2V). The same
-    # boolean chain bypasses the two LTXVImgToVideoInplace re-injections, whose
-    # image input is required even when bypassed — on switch graphs a 1x1 dummy
-    # keeps that chain valid without shipping a real render (the size comes
-    # from the PVR). Graphs without the switch (FL2VA / Loop-ABCBA) get no
-    # dummy: their loaders drop and ComfyUI fails the job with a clear
-    # missing-input error instead of silently rendering a black loop.
-    switch_srcs, bypass_srcs = set(), set()
+    # I2VA-T2VA: the "Switch to Text to Video?" boolean chain bypasses the two
+    # LTXVImgToVideoInplace re-injections. With images the graph runs as baked
+    # (I2V); without, the image chain (loader → ImageInfo → resize → preprocess
+    # → both re-injections) is dead weight with required inputs ComfyUI would
+    # reject — drop it and rewire each re-injection's consumers to its latent
+    # source, so T2V runs the QwenVL text-only on clean latents.
+    bypass_srcs = set()
     for node in prompt.values():
-        if node.get("class_type") == "ComfySwitchNode":
-            sw = node.get("inputs", {}).get("switch")
-            if isinstance(sw, list) and sw:
-                switch_srcs.add(str(sw[0]))
-        elif node.get("class_type") == "LTXVImgToVideoInplace":
+        if node.get("class_type") == "LTXVImgToVideoInplace":
             bp = node.get("inputs", {}).get("bypass")
             if isinstance(bp, list) and bp:
                 bypass_srcs.add(str(bp[0]))
@@ -222,8 +210,8 @@ def _patch(prompt, job):
     has_images = bool(job_images)
     if has_images:
         images = [_upload(f"{base}_{i}.png", _media_bytes(v)) for i, v in enumerate(job_images)]
-    elif switch_srcs:
-        images = [_upload(f"{base}_dummy.png", _DUMMY_PNG)]
+    elif bypass_srcs:
+        images = []
     else:
         images = []
     video_name = None
@@ -231,7 +219,7 @@ def _patch(prompt, job):
         video_name = _upload(f"{base}.mp4", _media_bytes(job["video"]))
 
     for nid, node in prompt.items():
-        if nid not in (switch_srcs | bypass_srcs) or node.get("class_type") != "PrimitiveBoolean":
+        if nid not in bypass_srcs or node.get("class_type") != "PrimitiveBoolean":
             continue
         inp = node.setdefault("inputs", {})
         if isinstance(inp.get("value"), bool):
@@ -297,6 +285,8 @@ def _patch(prompt, job):
             inp["video"] = video_name
         if job.get("prompt") is not None and "prompt" in inp and not isinstance(inp["prompt"], list):
             inp["prompt"] = job["prompt"]
+        if job.get("prompt") is not None and "prompt_text" in inp and not isinstance(inp["prompt_text"], list):
+            inp["prompt_text"] = job["prompt"]
         if job.get("vl_preset"):
             for wkey in ("preset_prompt", "enhancement_style"):
                 if wkey in inp:
@@ -318,33 +308,36 @@ def _patch(prompt, job):
             v = node.get("inputs", {}).get("value")
             if isinstance(v, int) and 0 < v <= 20:
                 node["inputs"]["value"] = sec
-    # LoadImage nodes left on the template filename (fewer uploads than loaders —
-    # e.g. single-image edits with an optional image2) would fail validation;
-    # drop them and unlink their consumers instead.
+    # Loaders left on their template value (fewer uploads than loaders, or a
+    # T2V job on the I2V graph) would fail validation — drop them, then
+    # iterate to a fixpoint: unlink references to the dead; image-chain nodes
+    # (resize / preprocess / img-to-video) keep widget inputs so they never
+    # reach zero-input and are declared dead once their image link is gone.
+    # A dropped LTXVImgToVideoInplace forwards its own latent input to its
+    # consumers — its bypass boolean survives as a harmless orphan.
     uploaded = set(images)
-    dead = [nid for nid, n in prompt.items()
-            if "LoadImage" in n.get("class_type", "")
-            and n.get("inputs", {}).get("image") not in uploaded]
-    # Same for reference video loaders left on their template value when the
-    # job carries no video.
-    dead += [nid for nid, n in prompt.items()
-             if "LoadVideo" in n.get("class_type", "")
-             and n.get("inputs", {}).get("video") != video_name]
-    if dead:
-        while dead:
-            for nid in dead:
-                del prompt[nid]
-            emptied = []
-            for nid, n in prompt.items():
-                for k in [k for k, v in n.get("inputs", {}).items()
-                          if isinstance(v, list) and v and v[0] in dead]:
-                    del n["inputs"][k]
-                if not n["inputs"]:
-                    emptied.append(nid)
-            # Cascade: nodes left with zero inputs after unlinking (e.g. a
-            # PixaromaImageInfo whose only input was a dropped loader) would
-            # fail validation on required inputs — drop them too.
-            dead = emptied
+    CHAIN_NODES = ("ResizeImageMaskNode", "LTXVPreprocess", "LTXVImgToVideoInplace")
+    while True:
+        dead = [nid for nid, n in prompt.items()
+                if ("LoadImage" in n.get("class_type", "")
+                    and n.get("inputs", {}).get("image") not in uploaded)
+                or ("LoadVideo" in n.get("class_type", "")
+                    and n.get("inputs", {}).get("video") != video_name)
+                or (n.get("class_type") in CHAIN_NODES
+                    and not any(k in ("image", "input") for k in n.get("inputs", {})))
+                or not n.get("inputs")]
+        if not dead:
+            break
+        for nid in dead:
+            n = prompt.pop(nid)
+            src = n.get("inputs", {}).get("latent")
+            for o in prompt.values():
+                for k in [k for k, v in o.get("inputs", {}).items()
+                          if isinstance(v, list) and v and v[0] == nid]:
+                    if n.get("class_type") == "LTXVImgToVideoInplace" and isinstance(src, list):
+                        o["inputs"][k] = src
+                    else:
+                        del o["inputs"][k]
     # Post-processing toggles: the graph chain is  save.images <- rife.frames
     # <- upscale.images <- VAEDecode.  upscale=false rewires rife.frames to the
     # decoder output; rife=false rewires save.images to rife's own source.

@@ -192,6 +192,11 @@ def _load_workflow(name):
     return wf
 
 
+def _job_style_text(job):
+    style_raw = str(job.get("style") or "").strip()
+    return re.sub(r"^\[[^\]]*\]\s*-\s*", "", style_raw) if style_raw and style_raw != "None" else ""
+
+
 def _patch(prompt, job):
     base = re.sub(r"[^\w.-]+", "-", str(job.get("job_name") or f"job_{uuid.uuid4().hex[:8]}")).strip("-")
     # I2VA-T2VA: the "Switch to Text to Video?" boolean chain bypasses the two
@@ -266,6 +271,7 @@ def _patch(prompt, job):
     elif images:
         mapping = {lid: images[i % len(images)] for i, lid in enumerate(slots)}
 
+    user_prompt = "\n".join(x for x in (_job_style_text(job), str(job.get("prompt") or "")) if x.strip()) or None
     for nid, node in prompt.items():
         ct = node.get("class_type", "")
         inp = node.get("inputs", {})
@@ -283,10 +289,12 @@ def _patch(prompt, job):
                     inp.pop("LoadImagePixState", None)
         elif "LoadVideo" in ct and video_name:
             inp["video"] = video_name
-        if job.get("prompt") is not None and "prompt" in inp and not isinstance(inp["prompt"], list):
-            inp["prompt"] = job["prompt"]
-        if job.get("prompt") is not None and "prompt_text" in inp and not isinstance(inp["prompt_text"], list):
-            inp["prompt_text"] = job["prompt"]
+        if user_prompt is not None and "prompt" in inp and not isinstance(inp["prompt"], list):
+            inp["prompt"] = user_prompt
+        if user_prompt is not None and "prompt_text" in inp and not isinstance(inp["prompt_text"], list):
+            inp["prompt_text"] = user_prompt
+        if user_prompt is not None and ct == "StringConcatenate" and "string_a" in inp and not isinstance(inp["string_a"], list):
+            inp["string_a"] = user_prompt
         if job.get("vl_preset"):
             for wkey in ("preset_prompt", "enhancement_style"):
                 if wkey in inp:
@@ -564,7 +572,8 @@ def _collect_outputs(history_entry, prompt, job, inline_used):
             continue
         for t in node_out.get("text", []) or []:  # ShowText nodes → prompt trace
             src_ct = (prompt or {}).get(str(src[0]), {}).get("class_type", "")
-            label = "Wildcards expanded" if "Wildcard" in src_ct else "Final prompt (QwenVL)"
+            label = ((prompt or {}).get(node_id, {}).get("_meta", {}).get("title")
+                     or ("Wildcards expanded" if "Wildcard" in src_ct else "Final prompt (QwenVL)"))
             texts[label] = t if isinstance(t, str) else str(t)
     return out, texts
 

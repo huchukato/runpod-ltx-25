@@ -10,8 +10,9 @@ text_encoders	gemma4-12b-uncensored-heretic-ltx2.5-comfy-int8-convrot.safetensor
 # ── AV VAEs ──
 vae	ltx-2.5-video-vae-conv-bf16.safetensors	https://huggingface.co/huchukato/garage/resolve/main/vae/ltx-2.5-video-vae-conv-bf16.safetensors
 vae	ltx-2.5-audio-vae-bf16.safetensors	https://huggingface.co/huchukato/garage/resolve/main/vae/ltx-2.5-audio-vae-bf16.safetensors
-# ── Latent spatial upscaler (2-stage I2VA/T2VA refine) ──
+# ── Latent upscalers, spatial + temporal (2-stage I2VA/T2VA refine) ──
 latent_upscale_models	ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors	https://huggingface.co/huchukato/garage/resolve/main/latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors
+latent_upscale_models	ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors	https://huggingface.co/huchukato/garage/resolve/main/latent_upscale_models/ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors
 # ── 10Eros v1.5 LoRA (uncensored style, strength 0.7 in the graphs) ──
 loras	LTX_10Eros-v15_LoRA_fro99-avgrank103.safetensors	https://huggingface.co/maximsobolev275/LTX-10Eros-LoRA-r768/resolve/main/LTX_10Eros-v15_LoRA_fro99-avgrank103.safetensors
 # ── QwenVL-Mod enhancer LLM: Defiant-Fable NEO-MAX Q6_K + mmproj ──

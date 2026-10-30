@@ -361,6 +361,15 @@ def _patch(prompt, job):
                             if n.get("class_type", "").endswith("LoadUpscalerTensorrtModel")), None)
     if upscaler_loader is not None and job.get("upscale_model"):
         upscaler_loader["inputs"]["model"] = job["upscale_model"]
+    # Stage-2 latent upscaler: "spatial" (detail) or "temporal" (motion
+    # coherence) — accepts the short name or the full model filename.
+    latent_loader = next((n for n in prompt.values()
+                          if n.get("class_type") == "LatentUpscaleModelLoader"), None)
+    if latent_loader is not None and job.get("latent_upscaler"):
+        v = str(job["latent_upscaler"])
+        latent_loader["inputs"]["model_name"] = (
+            v if v.endswith(".safetensors")
+            else f"ltx-2.5-latent-{v}-upscaler-x2-bf16-1.0.safetensors")
     if upscaler is not None and job.get("upscale_target"):
         upscaler["inputs"]["resize_to"] = job["upscale_target"]
     # Output size: "1344x768" rewrites the PVR tier — explicit size beats the

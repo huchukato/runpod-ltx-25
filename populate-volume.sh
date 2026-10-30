@@ -49,6 +49,8 @@ while IFS=$'\t' read -r sub name url; do
         # disk (30GB cap) and dies with EDQUOT on multi-GB files.
         repo_id=$(echo "$url" | awk -F/ '{print $4"/"$5}')
         repo_path=$(echo "$url" | sed -E 's#https?://[^/]+/[^/]+/[^/]+/resolve/[^/]+/(.+)#\1#')
+        # hf download wants the literal repo path — %20 would be sent as %2520.
+        repo_path=$(python3 -c 'import sys,urllib.parse; print(urllib.parse.unquote(sys.argv[1]))' "$repo_path")
         tmp_dir="$M/$sub/.tmp_hf_$name"
         rm -rf "$tmp_dir"; mkdir -p "$tmp_dir"
         export HF_HUB_ENABLE_HF_TRANSFER=1 HF_HUB_DISABLE_XET=1

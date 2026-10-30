@@ -336,6 +336,10 @@ def _patch(prompt, job):
                           if isinstance(v, list) and v and v[0] == nid]:
                     if n.get("class_type") == "LTXVImgToVideoInplace" and isinstance(src, list):
                         o["inputs"][k] = src
+                    elif k == "filename_prefix":
+                        # A required widget fed by a dropped chain node (e.g.
+                        # PixaromaImageInfo) — fall back to the job name.
+                        o["inputs"][k] = base
                     else:
                         del o["inputs"][k]
     # Post-processing toggles: the graph chain is  save.images <- rife.frames

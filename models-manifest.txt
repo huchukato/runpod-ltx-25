@@ -1,0 +1,23 @@
+# Model manifest for the LTX 2.5 serverless stack.
+# Format (tab-separated): <models subdir>	<filename>	<URL>
+# Consumed by populate-volume.sh (pods/temp workers) and the serverless
+# entrypoint auto-provisioning. Keep in sync — don't edit the dl() lists.
+#
+# ── DiT: LTX 2.5 22B distilled, INT8 ConvRot ──
+diffusion_models	ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors	https://huggingface.co/huchukato/garage/resolve/main/diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors
+# ── Text encoders: Gemma-4 12B uncensored heretic INT8 (main) + E2B BF16 (T2V prompt generator) ──
+text_encoders	gemma4-12b-uncensored-heretic-ltx2.5-comfy-int8-convrot.safetensors	https://huggingface.co/DeepNeuralNerd/Gemma-4-12B-it-uncensored-heretic-DeepNeuralNerd-LTX_2.5_ComfyUI/resolve/main/Gemma-4-12B-it-uncensored-heretic%20-%20DeepNeuralNerd%20-LTX%202.5-ComfyUI-int8convrot.safetensors
+text_encoders	gemma4_e2b_it_bf16.safetensors	https://huggingface.co/TrevorJS/gemma-4-E2B-it-uncensored/resolve/main/model.safetensors
+# ── AV VAEs ──
+vae	ltx-2.5-video-vae-conv-bf16.safetensors	https://huggingface.co/huchukato/garage/resolve/main/vae/ltx-2.5-video-vae-conv-bf16.safetensors
+vae	ltx-2.5-audio-vae-bf16.safetensors	https://huggingface.co/huchukato/garage/resolve/main/vae/ltx-2.5-audio-vae-bf16.safetensors
+# ── Latent spatial upscaler (2-stage I2VA/T2VA refine) ──
+latent_upscale_models	ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors	https://huggingface.co/huchukato/garage/resolve/main/latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors
+# ── 10Eros v1.5 LoRA (uncensored style, strength 0.7 in the graphs) ──
+loras	LTX_10Eros-v15_LoRA_fro99-avgrank103.safetensors	https://huggingface.co/maximsobolev275/LTX-10Eros-LoRA-r768/resolve/main/LTX_10Eros-v15_LoRA_fro99-avgrank103.safetensors
+# ── QwenVL-Mod enhancer LLM: Defiant-Fable NEO-MAX Q6_K + mmproj ──
+LLM/GGUF	Qwen3.5-9B-The-Defiant-Fable-Uncnr-Heretic-NEO-MAX-Q6_K.gguf	https://huggingface.co/DavidAU/Qwen3.5-9B-The-Defiant-Fable-Uncensored-Heretic-NEO-IMATRIX-MAX-MTP-GGUF/resolve/main/Qwen3.5-9B-The-Defiant-Fable-Uncnr-Heretic-NEO-MAX-Q6_K.gguf
+LLM/GGUF	mmproj-BF16.gguf	https://huggingface.co/DavidAU/Qwen3.5-9B-The-Defiant-Fable-Uncensored-Heretic-NEO-IMATRIX-MAX-MTP-GGUF/resolve/main/mmproj-BF16.gguf
+# ── Prebuilt TensorRT engines (RTX PRO 6000, TRT 10.15.1.29) — skips compile at first use ──
+tensorrt/rife	rife425_ensemble_False_scale_1_sim_fp16_large_1x3x720x720_1x3x1440x1440_1x3x1920x1920_10.15.1.29.trt	https://huggingface.co/huchukato/garage/resolve/main/tensorrt/rife/rife425_ensemble_False_scale_1_sim_fp16_large_1x3x720x720_1x3x1440x1440_1x3x1920x1920_10.15.1.29.trt
+tensorrt/upscaler	2xLexicaRRDBNet_fp16_1x3x256x256_2x3x512x512_2x3x2048x2048_10.15.1.29.trt	https://huggingface.co/huchukato/garage/resolve/main/tensorrt/upscaler/2xLexicaRRDBNet_fp16_1x3x256x256_2x3x512x512_2x3x2048x2048_10.15.1.29.trt

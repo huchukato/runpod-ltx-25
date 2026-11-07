@@ -433,6 +433,65 @@ def _patch(prompt, job):
     return prompt
 
 
+
+def _build_director_timeline(prompt, job):
+    """ForgeHub mode for the LTX 2.5 Director: stills + per-segment prompts in,
+    timeline_data JSON out. Segments text is |-separated (one prompt per still,
+    same format the Director's own relay uses); seconds is a comma list or empty
+    to distribute the total evenly."""
+    director = next((n for n in prompt.values()
+                     if n.get("class_type") == "LTXDirector"), None)
+    if director is None:
+        return prompt
+    images = job.get("images") or []
+    if not images:
+        return prompt
+    base = re.sub(r"[^\w.-]+", "-", str(job.get("job_name") or f"job_{uuid.uuid4().hex[:8]}")).strip("-")
+    names = [_upload(f"{base}_seg{i}.png", _media_bytes(v)) for i, v in enumerate(images)]
+    fps = int(job.get("fps") or 24)
+    texts = [p.strip() for p in str(job.get("segments") or "").split("|") if p.strip()]
+    seconds_raw = str(job.get("segment_seconds") or "").strip()
+    if seconds_raw:
+        secs = [float(s) for s in seconds_raw.split(",") if s.strip()]
+    else:
+        total = float(job.get("seconds") or 0)
+        secs = [total / max(1, len(names))] * len(names) if total else [5.0] * len(names)
+    while len(secs) < len(names):
+        secs.append(secs[-1])
+    segments, start = [], 0
+    for i, (name, sec) in enumerate(zip(names, secs)):
+        length = max(1, round(float(sec) * fps))
+        segments.append({
+            "id": f"fh{i}{uuid.uuid4().hex[:6]}",
+            "start": start, "length": length,
+            "prompt": texts[i] if i < len(texts) else "",
+            "type": "image", "imageFile": name,
+            "imageB64": f"/api/view?filename={name}&type=input",
+            "isEndFrame": False,
+        })
+        start += length
+    td = {
+        "mainTrackEnabled": True, "audioTrackEnabled": True, "motionTrackEnabled": True,
+        "propHeight": 90, "globalPropHeight": 299, "showFilenames": False,
+        "overrideAudio": False, "inpaint_audio": True,
+        "global_prompt": str(job.get("prompt") or ""),
+        "retake_global_prompt": "", "retakeMode": False, "retakeStart": 0,
+        "retakeLength": 48, "retakePrompt": "", "retakeStrength": 1, "retakeVideo": None,
+        "normalStartFrame": 0, "normalDurationFrames": start,
+        "segments": segments, "motionSegments": [], "audioSegments": [],
+    }
+    inp = director.setdefault("inputs", {})
+    inp["timeline_data"] = json.dumps(td)
+    inp["segment_lengths"] = ",".join(str(s["length"]) for s in segments)
+    inp["duration_frames"] = start
+    inp["frame_rate"] = fps
+    if job.get("enhance") is not None:
+        inp["enhance"] = bool(job.get("enhance"))
+    if job.get("vl_preset"):
+        inp["enhancer_preset"] = job["vl_preset"]
+    print(f"[handler] director timeline: {len(segments)} segments, {start} frames", flush=True)
+    return prompt
+
 def _apply_node_params(prompt, params):
     """Apply generic {node_id:widget} patches, after the built-in passes."""
     for key, value in (params or {}).items():
@@ -603,6 +662,7 @@ async def handler(job):
     else:
         wf = _load_workflow(inputs.get("workflow") or "")
         prompt = await asyncio.to_thread(_patch, wf, inputs)
+    prompt = _build_director_timeline(prompt, inputs)
     prompt = _apply_node_params(prompt, inputs.get("params"))
     print(f"[handler] queuing prompt ({len(prompt)} nodes)", flush=True)
     started = time.time()

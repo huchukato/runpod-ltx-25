@@ -6,7 +6,7 @@ media, queues the prompt, and returns the produced media as base64.
 
 Job input:
   {
-    "workflow": "LTX25-Loop-ABCBA.json",           # file in /opt/workflows
+    "workflow": "LTX25-Loop-ABCBA.json",           # synced from ForgeHub at boot
     "prompt":   "...",                             # enhancer text (wildcards ok)
     "seconds":  5,                                 # 5 | 10 | 20
     "images":   ["https://... or base64"],         # optional, fills LoadImage nodes in id order
@@ -134,7 +134,7 @@ def _sync_workflows():
         WF_SYNC_MANIFEST.write_text("\n".join(sorted(names)) + "\n")
         print(f"[handler] workflow sync: {sorted(names)}", flush=True)
     except Exception as exc:
-        print(f"[handler] workflow sync failed: {exc} — using baked workflows", flush=True)
+        print(f"[handler] workflow sync failed: {exc}", flush=True)
 
 
 def _boot_in_bg():
@@ -182,7 +182,7 @@ def _load_workflow(name):
     """Workflow templates must be saved in ComfyUI *API format* (Export API),
     where every node is keyed by id and inputs carry widget names — the UI
     format's positional widgets_values can't be patched reliably."""
-    dirs = [WF_SYNC_DIR, WORKFLOWS_DIR] if WF_SYNC_MANIFEST.is_file() else [WORKFLOWS_DIR]
+    dirs = [d for d in ([WF_SYNC_DIR, WORKFLOWS_DIR] if WF_SYNC_MANIFEST.is_file() else [WORKFLOWS_DIR]) if d.is_dir()]
     for base in dirs:
         path = base / name
         if not path.is_file():

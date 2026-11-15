@@ -27,6 +27,10 @@ RUN dl() { \
     dl huchukato ComfyUI-Upscaler-TensorRT-Auto master ComfyUI-Upscaler-TensorRT-Auto && \
     dl huchukato ComfyUI-TagForge v2.3.0 ComfyUI-TagForge && \
     dl huchukato ComfyUI-PerfectVideoResolution master ComfyUI-PerfectVideoResolution && \
+    rm -rf /opt/comfyui-baked/custom_nodes/ComfyUI-KJNodes && \
+    dl kijai ComfyUI-KJNodes main ComfyUI-KJNodes && \
+    rm -rf /opt/comfyui-baked/custom_nodes/ComfyUI-LTX-Director-Enhanced && \
+    dl huchukato ComfyUI-LTX-Director-Enhanced main ComfyUI-LTX-Director-Enhanced && \
     dl pixaroma ComfyUI-Pixaroma main ComfyUI-Pixaroma
 
 # ──────────────────────────────────────────────────────────────────────────────

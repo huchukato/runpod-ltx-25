@@ -22,6 +22,7 @@ A production-ready [Runpod Serverless](https://docs.runpod.io/serverless/overvie
 | `LTX25-FL2VA.json` | First/last frame → video + audio — a closed A→A loop when both slots carry the same still |
 | `LTX25-Loop-ABCBA.json` | **Pose loop**: up to 5 keyframe stills pinned at exact frames (0 / ¼ / ½ / ¾ / −1) — 3 stills A,B,C mirror into A→B→C→B→A and the loop closes by construction |
 | `LTX25-Director.json` | **Director**: keyframe stills + per-segment prompts (or one idea auto-split by the enhancer) → multi-scene timeline with synchronized audio, any duration |
+| `RelayVSR-x2.json` | **Video x2 upscale**: RelayVSR 1-step DiT + Flash VAE — any input clip, exact 2x, audio passthrough |
 
 ## Requirements
 
@@ -62,6 +63,7 @@ A production-ready [Runpod Serverless](https://docs.runpod.io/serverless/overvie
 - **Director** (`LTX25-Director.json`): `images` = keyframe stills in order; `segments` = one prompt per still, `|`-separated (empty = the enhancer auto-splits `prompt` into one scene per still); `segment_seconds` = comma list or empty for an even split of `seconds`; `fps` = 24/25
 - `enhance: false` — skip the QwenVL, use the prompt verbatim (passthrough)
 - `image_size` — explicit `WxH` pins the PVR tier; omit for the baked default
+- **RelayVSR** (`RelayVSR-x2.json`): `video` = input clip (required); output is exactly 2x, frames/audio pass through — no prompt needed
 - `upscale` / `rife` — TensorRT post chain · `"action": "health"` — status + workflow list, no generation
 
 ## Custom nodes baked in

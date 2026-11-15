@@ -45,3 +45,9 @@ drop baked workflows-api (ForgeHub sync is the only source), manifest: taeltx2_3
 Image: add ComfyUI-KJNodes (LTX2AttentionTunerPatch — the Director workflow needs it) and clone ComfyUI-LTX-Director-Enhanced explicitly so the node tracks main instead of the baked base-image copy (picks up the auto-split enhancement)
 Drop empty HF_TOKEN env var (warning noise; all manifest models are public)
 
+
+
+## v1.0.8
+
+RelayVSR x2 video upscale: new ForgeHub workflow (VHS_LoadVideo → RelayVSRConditioning/KSampler/VSRDecode → VHS_VideoCombine) + manifest entries for the x2 DiT (4.81GB) and Flash VAE
+handler: core LoadVideo input key is "file" (was "video" — VHS_LoadVideo keeps "video"); workflow sync honors meta.remote_file so one json can serve several endpoints

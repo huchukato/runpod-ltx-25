@@ -119,7 +119,9 @@ def _sync_workflows():
                 continue
             meta = json.loads(urllib.request.urlopen(raw(mp), timeout=60).read())
             if meta.get("endpoint_name") == FH_ENDPOINT:
-                wanted.append(mp[:-len(".meta.json")] + ".json")
+                rf = str(meta.get("remote_file") or "").strip()
+                wanted.append(mp.rsplit("/", 1)[0] + "/" + rf if rf.endswith(".json")
+                              else mp[:-len(".meta.json")] + ".json")
         WF_SYNC_DIR.mkdir(parents=True, exist_ok=True)
         names = set()
         for wp in wanted:
@@ -293,7 +295,8 @@ def _patch(prompt, job):
                 except Exception:
                     inp.pop("LoadImagePixState", None)
         elif "LoadVideo" in ct and video_name:
-            inp["video"] = video_name
+            # core LoadVideo takes "file"; VHS_LoadVideo takes "video"
+            inp["file" if ct == "LoadVideo" else "video"] = video_name
         if user_prompt is not None and "prompt" in inp and not isinstance(inp["prompt"], list):
             inp["prompt"] = user_prompt
         if user_prompt is not None and "prompt_text" in inp and not isinstance(inp["prompt_text"], list):
@@ -335,7 +338,7 @@ def _patch(prompt, job):
                 if ("LoadImage" in n.get("class_type", "")
                     and n.get("inputs", {}).get("image") not in uploaded)
                 or ("LoadVideo" in n.get("class_type", "")
-                    and n.get("inputs", {}).get("video") != video_name)
+                    and n.get("inputs", {}).get("file" if n.get("class_type") == "LoadVideo" else "video") != video_name)
                 or (n.get("class_type") in CHAIN_NODES
                     and not any(k in ("image", "input") for k in n.get("inputs", {})))
                 or not n.get("inputs")]

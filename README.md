@@ -21,6 +21,7 @@ A production-ready [Runpod Serverless](https://docs.runpod.io/serverless/overvie
 | `LTX25-I2VA-T2VA.json` | Text OR image → video + audio (2-stage: base pass → 2x latent upscale → refine); the worker switches I2V/T2V automatically from the presence of `images` |
 | `LTX25-FL2VA.json` | First/last frame → video + audio — a closed A→A loop when both slots carry the same still |
 | `LTX25-Loop-ABCBA.json` | **Pose loop**: up to 5 keyframe stills pinned at exact frames (0 / ¼ / ½ / ¾ / −1) — 3 stills A,B,C mirror into A→B→C→B→A and the loop closes by construction |
+| `LTX25-Director.json` | **Director**: keyframe stills + per-segment prompts (or one idea auto-split by the enhancer) → multi-scene timeline with synchronized audio, any duration |
 
 ## Requirements
 
@@ -56,15 +57,16 @@ A production-ready [Runpod Serverless](https://docs.runpod.io/serverless/overvie
 
 - `prompt` — enhancer text; `__mmh3/...__` wildcards expand inside the QwenVL node (TagForge is baked in). The LTX presets want ONE flowing paragraph: motion arc, one continuous camera move that returns to the starting framing, audio cues
 - `images` — filled into the LoadImage slots in **temporal order** (sorted by each slot's keyframe `frame_idx`); 3 stills into the 5 pose-loop slots mirror automatically (A,B,C → A,B,C,B,A); a single still into FL2VA closes an A→A loop
-- `seconds` — 5 / 10 / 20: drives both the video length and the QwenVL preset duration variant
-- `vl_preset` — `LTX › NSFW I2V` / `LTX › NSFW FL2VA` / `LTX › NSFW Loop` (the enhancer's guidance preset)
+- `seconds` — any whole number of seconds: drives the video length and the QwenVL preset duration variant (clamped to the preset's own durations); the Director node snaps to its 8n+1 frame grid
+- `vl_preset` — `LTX › Director` / `LTX › SFW T2V` / `LTX › NSFW T2V` / I2V / FL2VA / Loop variants (the enhancer's guidance preset)
+- **Director** (`LTX25-Director.json`): `images` = keyframe stills in order; `segments` = one prompt per still, `|`-separated (empty = the enhancer auto-splits `prompt` into one scene per still); `segment_seconds` = comma list or empty for an even split of `seconds`; `fps` = 24/25
 - `enhance: false` — skip the QwenVL, use the prompt verbatim (passthrough)
 - `image_size` — explicit `WxH` pins the PVR tier; omit for the baked default
 - `upscale` / `rife` — TensorRT post chain · `"action": "health"` — status + workflow list, no generation
 
 ## Custom nodes baked in
 
-`ComfyUI-VideoHelperSuite` · `ComfyUI-Easy-Use` · `ComfyUI-QwenVL-Mod` · `ComfyUI-RIFE-TensorRT-Auto` · `ComfyUI-Upscaler-TensorRT-Auto` · `ComfyUI-TagForge` · `ComfyUI-PerfectVideoResolution` · `ComfyUI-Pixaroma`
+`ComfyUI-VideoHelperSuite` · `ComfyUI-Easy-Use` · `ComfyUI-QwenVL-Mod` · `ComfyUI-RIFE-TensorRT-Auto` · `ComfyUI-Upscaler-TensorRT-Auto` · `ComfyUI-TagForge` · `ComfyUI-PerfectVideoResolution` · `ComfyUI-Pixaroma` · `ComfyUI-KJNodes` · `ComfyUI-LTX-Director-Enhanced`
 
 ## Companion stack
 

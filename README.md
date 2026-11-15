@@ -55,7 +55,7 @@ A production-ready [Runpod Serverless](https://docs.runpod.io/serverless/overvie
 }
 ```
 
-- `prompt` — enhancer text; `__mmh3/...__` wildcards expand inside the QwenVL node (TagForge is baked in). The LTX presets want ONE flowing paragraph: motion arc, one continuous camera move that returns to the starting framing, audio cues
+- `prompt` — enhancer text (the LTX presets want ONE flowing paragraph: motion arc, one continuous camera move that returns to the starting framing, audio cues)
 - `images` — filled into the LoadImage slots in **temporal order** (sorted by each slot's keyframe `frame_idx`); 3 stills into the 5 pose-loop slots mirror automatically (A,B,C → A,B,C,B,A); a single still into FL2VA closes an A→A loop
 - `seconds` — any whole number of seconds: drives the video length and the QwenVL preset duration variant (clamped to the preset's own durations); the Director node snaps to its 8n+1 frame grid
 - `vl_preset` — `LTX › Director` / `LTX › SFW T2V` / `LTX › NSFW T2V` / I2V / FL2VA / Loop variants (the enhancer's guidance preset)

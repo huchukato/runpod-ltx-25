@@ -39,3 +39,9 @@ boot: --enable-triton-backend (safe on int8-convrot, pods run it)
 
 drop baked workflows-api (ForgeHub sync is the only source), manifest: taeltx2_3 + normal video VAE
 
+
+## v1.0.7
+
+Image: add ComfyUI-KJNodes (LTX2AttentionTunerPatch — the Director workflow needs it) and clone ComfyUI-LTX-Director-Enhanced explicitly so the node tracks main instead of the baked base-image copy (picks up the auto-split enhancement)
+Drop empty HF_TOKEN env var (warning noise; all manifest models are public)
+

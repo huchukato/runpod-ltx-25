@@ -51,3 +51,7 @@ Drop empty HF_TOKEN env var (warning noise; all manifest models are public)
 
 RelayVSR x2 video upscale: new ForgeHub workflow (VHS_LoadVideo → RelayVSRConditioning/KSampler/VSRDecode → VHS_VideoCombine) + manifest entries for the x2 DiT (4.81GB) and Flash VAE
 handler: core LoadVideo input key is "file" (was "video" — VHS_LoadVideo keeps "video"); workflow sync honors meta.remote_file so one json can serve several endpoints
+
+## v1.0.9
+
+handler: URL-encode workflow sync paths (filenames with spaces broke the whole sync)

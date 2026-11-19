@@ -60,6 +60,13 @@ INLINE_MAX = int(os.environ.get("OUTPUT_INLINE_MAX_MB", "10")) * 1024 * 1024
 INLINE_BUDGET = int(os.environ.get("OUTPUT_INLINE_BUDGET_MB", "15")) * 1024 * 1024
 S3_PREFIX = os.environ.get("S3_OUTPUT_PREFIX", "outputs")
 
+# serverless-entrypoint.sh materializes ComfyUI and populates the volume in a
+# background subshell so this worker registers immediately; ComfyUI boot waits
+# for the prep-done marker it drops. Set COMFY_PREP_TIMEOUT_S=0 to skip the wait
+# (e.g. running handler.py directly without the entrypoint).
+PREP_DONE = os.environ.get("PREP_DONE", "/tmp/comfy-prep.done")
+PREP_TIMEOUT_S = int(os.environ.get("COMFY_PREP_TIMEOUT_S", "900"))
+
 
 def _http(path, payload=None, timeout=30):
     url = COMFY_URL + path
@@ -139,6 +146,12 @@ def _sync_workflows():
         print(f"[handler] workflow sync failed: {exc}", flush=True)
 
 
+def _wait_prep():
+    deadline = time.time() + PREP_TIMEOUT_S
+    while not os.path.exists(PREP_DONE) and time.time() < deadline:
+        time.sleep(2)
+
+
 def _boot_in_bg():
     # ComfyUI boots on a daemon thread so the runpod handler is live (and the
     # `health` action answers) even while ComfyUI is still starting — or on
@@ -147,6 +160,7 @@ def _boot_in_bg():
     global _BOOT_ERR
     try:
         _sync_workflows()
+        _wait_prep()
         _boot_comfy()
     except Exception as exc:
         _BOOT_ERR = exc

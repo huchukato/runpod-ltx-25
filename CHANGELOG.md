@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.10
+
+Fast worker registration: entrypoint materialization/volume-populate moved to a background subshell — handler.py starts immediately and ComfyUI boot waits on a prep-done marker, so cold starts and the Hub test deadline no longer include image prep
+
 ## v1.0.0
 
 LTX 2.5 serverless worker — initial commit: handler (adapted from runpod-minimax-h3: temporal image fill with palindrome mirroring for the pose-loop slots, T2V/I2V switch drive, targeted duration patch), entrypoint + volume populate, models manifest (~61GB), Dockerfile (8 node packs), three baked API workflows, Hub manifest + README
